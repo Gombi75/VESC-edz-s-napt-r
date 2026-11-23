@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VESC közös edzések naptár</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1b1f24; --muted:#6b7280; --line:#e5e7eb; --soft:#f1f3f5;
+    --run:#f28c28; --run-bg:#fff1e3;
+    --bike:#2e9e5b; --bike-bg:#e5f5ec;
+    --swim:#2f7fd8; --swim-bg:#e5f0fc;
+    --other:#7b8290; --other-bg:#eef0f3;
+    --race:#d63c3c; --race-bg:#fde8e8;
+    --accent:#1b1f24; --today:#1b1f24;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121417; --panel:#1b1e23; --ink:#eceef1; --muted:#9aa1ab; --line:#2b3037; --soft:#22262c;
+      --run-bg:#3a2717; --bike-bg:#17321f; --swim-bg:#172a42; --other-bg:#2a2e34; --race-bg:#3d1d1d;
+      --accent:#eceef1; --today:#eceef1;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  button{font:inherit;color:inherit;cursor:pointer}
+  input,select,textarea{font:inherit;color:var(--ink);background:var(--panel)}
+  .app{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+  aside{background:var(--panel);border-right:1px solid var(--line);padding:20px 16px;display:flex;flex-direction:column;gap:20px}
+  .brand h1{font-size:18px;margin:0 0 2px;font-weight:700;letter-spacing:-.01em}
+  .brand p{margin:0;color:var(--muted);font-size:12.5px}
+  .btn-primary{background:var(--accent);color:var(--panel);border:0;border-radius:10px;padding:11px 14px;font-weight:600;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-secondary{background:var(--race-bg);color:var(--ink);border:1.5px solid var(--race);border-radius:10px;padding:9px 14px;font-weight:600;width:100%;margin-top:-12px}
+  .btn-secondary:hover{filter:brightness(.97)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .section-title{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:0 0 8px}
+  .filters{display:flex;flex-direction:column;gap:4px}
+  .filter{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;cursor:pointer;user-select:none}
+  .filter:hover{background:var(--soft)}
+  .filter input{position:absolute;opacity:0;pointer-events:none}
+  .check{width:18px;height:18px;border-radius:5px;border:2px solid var(--c);display:grid;place-items:center;flex:none;transition:background .12s}
+  .check svg{width:11px;height:11px;opacity:0}
+  .filter input:checked + .check{background:var(--c)}
+  .filter input:checked + .check svg{opacity:1}
+  .filter input:focus-visible + .check{outline:2px solid var(--c);outline-offset:2px}
+  .filter .emoji{font-size:16px}
+  .filter .name{flex:1;font-weight:500}
+  .filter .count{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .filter.off .name,.filter.off .emoji{opacity:.45}
+  .filter-actions{display:flex;gap:12px;padding:4px 10px 0}
+  .linkbtn{background:none;border:0;padding:0;color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:2px}
+  .upcoming{display:flex;flex-direction:column;gap:6px;overflow:auto}
+  .up{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:9px;background:var(--soft);border:0;text-align:left;width:100%}
+  .up .bar{width:4px;align-self:stretch;border-radius:2px;background:var(--c);flex:none}
+  .up .t{font-weight:600;font-size:13px;line-height:1.3}
+  .up .m{color:var(--muted);font-size:12px;margin-top:2px}
+  .empty{color:var(--muted);font-size:12.5px;padding:4px 2px}
+  .me{margin-top:10px;font-size:13px}
+  .muted{color:var(--muted)}
+  .admin-badge{display:inline-block;background:var(--soft);border-radius:999px;padding:2px 8px;font-size:12px;font-weight:600}
+  .keybox{background:var(--soft);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+  .keyrow{display:flex;gap:6px;align-items:center}
+  .keyrow code{flex:1;font-size:11px;word-break:break-all;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 8px}
+  .keyrow input{flex:1;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:12px}
+  .btn.small{padding:6px 10px;font-size:12.5px}
+  .members{display:flex;flex-direction:column;gap:2px;max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:6px}
+  .mem{display:flex;gap:8px;align-items:center;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13.5px}
+  .mem:hover{background:var(--soft)}
+  .mem.all{border-bottom:1px solid var(--line);border-radius:0;margin-bottom:2px}
+  .status{font-size:12px;color:var(--muted);margin-top:auto;line-height:1.4}
+  .status.warn{color:#c2410c}
+
+  main{padding:20px 24px;display:flex;flex-direction:column;gap:14px;min-width:0}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .toolbar h2{margin:0 8px 0 0;font-size:22px;font-weight:700;letter-spacing:-.01em;text-transform:capitalize;min-width:200px}
+  .iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:9px;width:36px;height:36px;display:grid;place-items:center}
+  .iconbtn:hover{background:var(--soft)}
+  .pill{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:0 14px;height:36px;font-weight:500}
+  .pill:hover{background:var(--soft)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-left:auto}
+  .seg button{border:0;background:var(--panel);padding:0 14px;height:34px;font-weight:500}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+
+  .cal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;flex:1}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--line)}
+  .dow div{padding:10px 10px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:minmax(118px,1fr);flex:1}
+  .day{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:3px;min-width:0;cursor:pointer;position:relative}
+  .day:nth-child(7n){border-right:0}
+  .day:hover{background:var(--soft)}
+  .day.other{background:color-mix(in srgb,var(--bg) 60%,transparent)}
+  .day.other .num{color:var(--muted);opacity:.6}
+  .num{font-size:12.5px;font-weight:600;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;margin-bottom:2px}
+  .day.today .num{background:var(--today);color:var(--panel)}
+  .ev{display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px;background:var(--bg-c);color:var(--ink);font-size:12px;border:0;border-left:3px solid var(--c);text-align:left;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+  .ev:hover{filter:brightness(.97)}
+  .ev.race{font-weight:700}
+  .chooser{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .choice{display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 10px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);text-align:center}
+  .choice:hover{filter:brightness(.97)}
+  .choice.train{border-color:var(--accent)}
+  .choice.race{border-color:var(--race);background:var(--race-bg)}
+  .choice .ce{font-size:24px}
+  .choice .ct{font-weight:700;font-size:15px}
+  .choice .cs{font-size:12px;color:var(--muted)}
+  .linkprev{display:block;margin-top:6px;font-size:12.5px;color:var(--swim);word-break:break-all}
+  .repeat{background:var(--soft);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  .chk{display:flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer}
+  .detail a{color:var(--swim)}
+  .ev .tm{font-weight:600;font-variant-numeric:tabular-nums;flex:none}
+  .ev .tt{overflow:hidden;text-overflow:ellipsis}
+  .more{font-size:11.5px;color:var(--muted);background:none;border:0;text-align:left;padding:1px 6px}
+
+  .list{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:6px 0}
+  .list-day{padding:12px 18px 4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .list-ev{display:flex;gap:14px;align-items:center;padding:10px 18px;border:0;background:none;width:100%;text-align:left}
+  .list-ev:hover{background:var(--soft)}
+  .list-ev .dot{width:34px;height:34px;border-radius:9px;background:var(--bg-c);display:grid;place-items:center;font-size:17px;flex:none}
+  .list-ev .info{flex:1;min-width:0}
+  .list-ev .t{font-weight:600}
+  .list-ev .m{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .list-ev .who{font-size:12px;color:var(--muted);white-space:nowrap}
+
+  /* modal */
+  .scrim{position:fixed;inset:0;background:rgba(10,12,15,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+  .scrim.open{display:flex}
+  .modal{background:var(--panel);border-radius:16px;width:100%;max-width:480px;max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .modal header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 6px}
+  .modal header h3{margin:0;font-size:17px}
+  .modal .body{padding:8px 20px 4px;display:flex;flex-direction:column;gap:12px}
+  .modal footer{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px 18px;flex-wrap:wrap}
+  label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:500;color:var(--muted)}
+  label.f input,label.f select,label.f textarea{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:14px;width:100%}
+  label.f textarea{resize:vertical;min-height:70px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px}
+  .sportpick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .sportpick.five{grid-template-columns:repeat(5,1fr)}
+  .sportpick.five label{font-size:11px}
+  .sportpick label{border:1.5px solid var(--line);border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;display:flex;flex-direction:column;gap:2px;align-items:center}
+  .sportpick label span.e{font-size:18px}
+  .sportpick input{position:absolute;opacity:0;pointer-events:none}
+  .sportpick input:checked + label{border-color:var(--c);background:var(--bg-c)}
+  .sportpick input:focus-visible + label{outline:2px solid var(--c);outline-offset:1px}
+  .btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:9px 14px;font-weight:500}
+  .btn:hover{background:var(--soft)}
+  .btn.dark{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+  .btn.danger{color:#c0392b;border-color:color-mix(in srgb,#c0392b 40%,var(--line))}
+  .btn.danger.confirm{background:#c0392b;color:#fff;border-color:#c0392b}
+  .spacer{flex:1}
+  .detail{display:flex;flex-direction:column;gap:10px;padding:4px 20px 0}
+  .detail .tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--bg-c);font-size:12.5px;font-weight:600;align-self:flex-start}
+  .detail .line{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+  .detail .line .k{width:22px;text-align:center;flex:none;color:var(--muted)}
+  .detail .desc{white-space:pre-wrap;background:var(--soft);border-radius:10px;padding:10px 12px;font-size:13.5px}
+  .att{display:flex;flex-wrap:wrap;gap:6px}
+  .att span{background:var(--soft);border-radius:999px;padding:3px 10px;font-size:12.5px}
+  .err{color:#c0392b;font-size:12.5px;min-height:1em}
+  .x{border:0;background:none;font-size:22px;line-height:1;color:var(--muted);padding:4px 6px}
+
+  .menu-toggle{display:none}
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr}
+    aside{border-right:0;border-bottom:1px solid var(--line);gap:14px}
+    .upcoming-wrap{display:none}
+    .status{margin-top:0}
+    .filters{flex-direction:row;flex-wrap:wrap}
+    .filter{padding:6px 10px;background:var(--soft)}
+    .filter .count{display:none}
+    main{padding:14px 12px}
+    .toolbar h2{font-size:18px;min-width:0;flex:1}
+    .grid{grid-auto-rows:minmax(74px,1fr)}
+    .ev .tt{display:none}
+    .ev{padding:2px 4px;justify-content:center}
+    .dow div{padding:8px 4px;text-align:center}
+    .seg{margin-left:0}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <h1>VESC közös edzések</h1>
+      <p>Írd be, ha közös edzést szervezel, és nézd meg, ki jön.</p>
+      <div class="me" id="me"></div>
+    </div>
+    <button class="btn-primary" id="addBtn">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Új közös edzés
+    </button>
+    <button class="btn-secondary" id="addRaceBtn">🏆 Új verseny</button>
+    <div>
+      <p class="section-title">Sportágak</p>
+      <div class="filters" id="filters"></div>
+      <div class="filter-actions">
+        <button class="linkbtn" id="allOn">Mind</button>
+        <button class="linkbtn" id="allOff">Egyik sem</button>
+      </div>
+    </div>
+    <div class="upcoming-wrap">
+      <p class="section-title">Következő edzések</p>
+      <div class="upcoming" id="upcoming"><div class="empty">Betöltés…</div></div>
+    </div>
+    <div class="status" id="status">Kapcsolódás…</div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <button class="iconbtn" id="prev" aria-label="Előző">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="iconbtn" id="next" aria-label="Következő">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="pill" id="todayBtn">Ma</button>
+      <h2 id="title"></h2>
+      <div class="seg" role="group" aria-label="Nézet">
+        <button id="vMonth" aria-pressed="true">Hónap</button>
+        <button id="vList" aria-pressed="false">Lista</button>
+      </div>
+    </div>
+    <div id="view"></div>
+  </main>
+</div>
+
+<!-- modal -->
+<div class="scrim" id="scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <header><h3 id="mTitle"></h3><button class="x" id="mClose" aria-label="Bezárás">×</button></header>
+    <div id="mContent"></div>
+  </div>
+</div>
+
+<script>
+const SPORTS = {
+  run:   { name:"Futás",            emoji:"🏃‍♂️", c:"var(--run)",   bg:"var(--run-bg)" },
+  bike:  { name:"Kerékpározás",     emoji:"🚴‍♂️", c:"var(--bike)",  bg:"var(--bike-bg)" },
+  swim:  { name:"Úszás",            emoji:"🏊‍♂️", c:"var(--swim)",  bg:"var(--swim-bg)" },
+  other: { name:"Erőnlét / Egyéb",  emoji:"🏋️‍♂️", c:"var(--other)", bg:"var(--other-bg)" },
+  race:  { name:"Versenyek",        emoji:"🏆", c:"var(--race)",  bg:"var(--race-bg)", short:"Verseny" },
+};
+const RACE_TYPES = {
+  tri:   { name:"Triatlon",        short:"Triatlon", emoji:"🏊‍♂️" },
+  du:    { name:"Duatlon",         short:"Duatlon",  emoji:"🔁" },
+  run:   { name:"Futóverseny",     short:"Futás",    emoji:"🏃‍♂️" },
+  bike:  { name:"Kerékpárverseny", short:"Kerékpár", emoji:"🚴‍♂️" },
+  other: { name:"Egyéb verseny",   short:"Egyéb",    emoji:"🏅" },
+};
+const raceLabel = e => (RACE_TYPES[e.raceType]||{name:"Verseny"}).name;
+const MONTHS = ["január","február","március","április","május","június","július","augusztus","szeptember","október","november","december"];
+const DOW = ["H","K","Sze","Cs","P","Szo","V"];
+const DOW_LONG = ["vasárnap","hétfő","kedd","szerda","csütörtök","péntek","szombat"];
+
+const state = { events: [], cursor: new Date(), view: "month", enabled: loadFilters(), loaded: false, me: loadName(), key: loadKey(), adminPw: store("vesc-admin")||"", isAdmin: false };
+state.cursor.setDate(1);
+
+function store(k, v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k, v); }catch(e){ return null; } }
+function loadFilters(){
+  try{ const v = JSON.parse(store("vesc-filters")||"null"); if(v && typeof v==="object") return Object.assign({run:true,bike:true,swim:true,other:true,race:true}, v); }catch(e){}
+  return {run:true,bike:true,swim:true,other:true,race:true};
+}
+function saveFilters(){ store("vesc-filters", JSON.stringify(state.enabled)); }
+function loadName(){ return (store("vesc-name")||"").trim(); }
+function newKey(){ const a=new Uint8Array(20); crypto.getRandomValues(a); return Array.from(a,b=>b.toString(16).padStart(2,"0")).join(""); }
+function loadKey(){ let k=(store("vesc-key")||"").trim(); if(!/^[a-f0-9]{32,64}$/.test(k)){ k=newKey(); store("vesc-key",k); } return k; }
+const auth = () => ({ key: state.key, adminPw: state.adminPw });
+function apply(d){ if(d && d.events){ state.events=d.events; state.isAdmin=!!d.isAdmin; } }
+
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parseYmd = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const todayStr = () => ymd(new Date());
+function fmtDayLong(s){ const d=parseYmd(s); return `${d.getFullYear()}. ${MONTHS[d.getMonth()]} ${d.getDate()}., ${DOW_LONG[d.getDay()]}`; }
+function fmtDayShort(s){ const d=parseYmd(s); return `${MONTHS[d.getMonth()].slice(0,3)}. ${d.getDate()}. ${DOW_LONG[d.getDay()]}`; }
+function el(tag, attrs={}, ...kids){
+  const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs)){
+    if(k==="class") e.className=v;
+    else if(k==="style") e.setAttribute("style",v);
+    else if(k.startsWith("on")) e.addEventListener(k.slice(2),v);
+    else if(v!==false && v!=null) e.setAttribute(k,v===true?"":v);
+  }
+  for(const k of kids.flat()){ if(k==null||k===false) continue; e.append(k instanceof Node?k:document.createTextNode(String(k))); }
+  return e;
+}
+const sportOf = ev => SPORTS[ev.sport] ? ev.sport : "other";
+const visible = () => state.events.filter(e => /^\d{4}-\d{2}-\d{2}$/.test(e.date) && state.enabled[sportOf(e)]);
+const sortEv = (a,b) => (a.date+(a.start||"99:99")).localeCompare(b.date+(b.start||"99:99"));
+const iGo = e => !!state.me && (e.attendees||[]).some(n => n.toLowerCase()===state.me.toLowerCase());
+
+/* ---------- server calls ---------- */
+// A naptár háttere (Google Apps Script webalkalmazás /exec címe)
+const API_URL = "https://script.google.com/macros/s/AKfycbwXvZQZjhAbtiI8rFmPGGRYvB7bGssHzVaD2H7EJnPn71f1lWB3KcSn5N_QDJmrGromRA/exec";
+const inAppsScript = typeof google!=="undefined" && google.script && google.script.run;
+function call(fn, ...args){
+  if(inAppsScript) return new Promise((res, rej) => {
+    google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args);
+  });
+  // külső weboldalról: sima kérés, Google-bejelentkezés (süti) nélkül
+  return fetch(API_URL, { method:"POST", redirect:"follow", credentials:"omit",
+      headers:{ "Content-Type":"text/plain;charset=utf-8" }, body: JSON.stringify({ fn, args }) })
+    .then(r => { if(!r.ok) throw new Error("A naptár szervere nem érhető el ("+r.status+")."); return r.json(); })
+    .then(d => { if(!d || !d.ok) throw new Error((d && d.error) || "Ismeretlen hiba."); return d.result; });
+}
+async function refresh(){
+  try{
+    apply(await call("getData", auth())); state.loaded = true;
+    setStatus("Élő naptár: mindenki ugyanazt látja. Frissítve: "+new Date().toLocaleTimeString("hu-HU",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){
+    state.loaded = true; setStatus("Nem sikerült betölteni a naptárt. Próbáld újra később.", true);
+  }
+  renderAll();
+}
+
+/* ---------- sidebar ---------- */
+function renderMe(){
+  const box=document.getElementById("me"); box.textContent="";
+  box.append(
+    el("span",{},"👤 "),
+    state.me ? el("strong",{},state.me) : el("span",{class:"muted"},"Még nem adtad meg a neved"),
+    " ",
+    el("button",{class:"linkbtn",onclick:()=>askName()}, state.me?"módosít":"megadom"),
+    el("div",{style:"margin-top:6px"},
+      state.isAdmin ? el("span",{class:"admin-badge"},"🛡️ Rendszergazda") : null, " ",
+      el("button",{class:"linkbtn",onclick:()=>state.isAdmin?adminLogout():adminLogin()}, state.isAdmin?"kilépés":"rendszergazda belépés")));
+}
+function renderFilters(){
+  const box=document.getElementById("filters"); box.textContent="";
+  const counts={run:0,bike:0,swim:0,other:0,race:0};
+  const t=todayStr();
+  state.events.forEach(e=>{ if(e.date>=t) counts[sportOf(e)]++; });
+  for(const [k,s] of Object.entries(SPORTS)){
+    const id="f-"+k;
+    const input=el("input",{type:"checkbox",id});
+    input.checked=!!state.enabled[k];
+    input.addEventListener("change",()=>{ state.enabled[k]=input.checked; saveFilters(); renderAll(); });
+    box.append(el("label",{class:"filter"+(state.enabled[k]?"":" off"),for:id,style:`--c:${s.c}`},
+      input, el("span",{class:"check"}, svgCheck()), el("span",{class:"emoji"},s.emoji),
+      el("span",{class:"name"},s.name), el("span",{class:"count"},counts[k]||"")));
+  }
+}
+function svgCheck(){
+  const ns="http://www.w3.org/2000/svg";
+  const s=document.createElementNS(ns,"svg"); s.setAttribute("viewBox","0 0 12 12");
+  const p=document.createElementNS(ns,"path"); p.setAttribute("d","M2 6.5l2.5 2.5L10 3.5"); p.setAttribute("stroke","#fff"); p.setAttribute("stroke-width","2.2"); p.setAttribute("fill","none"); p.setAttribute("stroke-linecap","round"); p.setAttribute("stroke-linejoin","round");
+  s.append(p); return s;
+}
+function renderUpcoming(){
+  const box=document.getElementById("upcoming"); box.textContent="";
+  if(!state.loaded){ box.append(el("div",{class:"empty"},"Betöltés…")); return; }
+  const t=todayStr();
+  const list=visible().filter(e=>e.date>=t).sort(sortEv).slice(0,8);
+  if(!list.length){ box.append(el("div",{class:"empty"},"Nincs tervezett közös edzés a kiválasztott sportágakban.")); return; }
+  list.forEach(e=>{
+    const s=SPORTS[sportOf(e)];
+    box.append(el("button",{class:"up",style:`--c:${s.c}`,onclick:()=>openDetail(e.id)},
+      el("span",{class:"bar"}),
+      el("div",{}, el("div",{class:"t"},s.emoji+" "+(e.title||s.name)),
+        el("div",{class:"m"},fmtDayShort(e.date)+(e.start?" · "+e.start:"")+(e.place?" · "+e.place:"")))));
+  });
+}
+
+/* ---------- main views ---------- */
+function renderTitle(){
+  const d=state.cursor;
+  document.getElementById("title").textContent = state.view==="month" ? `${d.getFullYear()}. ${MONTHS[d.getMonth()]}` : "Közelgő edzések";
+  document.getElementById("vMonth").setAttribute("aria-pressed",state.view==="month");
+  document.getElementById("vList").setAttribute("aria-pressed",state.view==="list");
+  ["prev","next","todayBtn"].forEach(id=>document.getElementById(id).style.visibility = state.view==="month"?"visible":"hidden");
+}
+function renderMonth(){
+  const view=document.getElementById("view"); view.textContent="";
+  const cal=el("div",{class:"cal"});
+  const dow=el("div",{class:"dow"}, DOW.map(d=>el("div",{},d)));
+  const grid=el("div",{class:"grid"});
+  const first=new Date(state.cursor); const m=first.getMonth();
+  const offset=(first.getDay()+6)%7;
+  const start=new Date(first); start.setDate(1-offset);
+  const last=new Date(first.getFullYear(),m+1,0);
+  const totalCells=Math.ceil((offset+last.getDate())/7)*7;
+  const byDay={};
+  visible().forEach(e=>{ (byDay[e.date] = byDay[e.date] || []).push(e); });
+  const t=todayStr();
+  const small = matchMedia("(max-width:860px)").matches;
+  const maxShow = small ? 3 : 4;
+  for(let i=0;i<totalCells;i++){
+    const d=new Date(start); d.setDate(start.getDate()+i);
+    const key=ymd(d);
+    const evs=(byDay[key]||[]).sort(sortEv);
+    const cell=el("div",{class:"day"+(d.getMonth()!==m?" other":"")+(key===t?" today":"")}, el("div",{class:"num"},d.getDate()));
+    cell.addEventListener("click",ev=>{ if(ev.target===cell||ev.target.classList.contains("num")) openChooser(key); });
+    evs.slice(0, evs.length>maxShow? maxShow-1 : maxShow).forEach(e=>{
+      const s=SPORTS[sportOf(e)];
+      cell.append(el("button",{class:"ev"+(e.sport==="race"?" race":""),style:`--c:${s.c};--bg-c:${s.bg}`,title:`${s.name}: ${e.title||""} ${e.start||""}`,onclick:(x)=>{x.stopPropagation();openDetail(e.id);}},
+        small ? s.emoji : (e.start? el("span",{class:"tm"},e.start):null),
+        el("span",{class:"tt"},(small?"":s.emoji+" ")+(e.title||s.name))));
+    });
+    if(evs.length>maxShow) cell.append(el("button",{class:"more",onclick:(x)=>{x.stopPropagation();openDay(key);}},`+${evs.length-maxShow+1} további`));
+    grid.append(cell);
+  }
+  cal.append(dow,grid); view.append(cal);
+}
+function renderList(){
+  const view=document.getElementById("view"); view.textContent="";
+  const t=todayStr();
+  const list=visible().filter(e=>e.date>=t).sort(sortEv);
+  const box=el("div",{class:"list"});
+  if(!state.loaded) box.append(el("div",{class:"empty",style:"padding:16px 18px"},"Betöltés…"));
+  else if(!list.length) box.append(el("div",{class:"empty",style:"padding:16px 18px"},"Nincs tervezett közös edzés a kiválasztott sportágakban. Kattints az „Új közös edzés” gombra!"));
+  let lastDay="";
+  list.forEach(e=>{
+    if(e.date!==lastDay){ box.append(el("div",{class:"list-day"},fmtDayLong(e.date))); lastDay=e.date; }
+    const s=SPORTS[sportOf(e)];
+    const n=(e.attendees||[]).length;
+    box.append(el("button",{class:"list-ev",style:`--bg-c:${s.bg}`,onclick:()=>openDetail(e.id)},
+      el("span",{class:"dot"},s.emoji),
+      el("div",{class:"info"}, el("div",{class:"t"},e.title||s.name),
+        el("div",{class:"m"},[e.sport==="race"&&raceLabel(e), e.start&&(e.start+(e.end?"–"+e.end:"")), e.place, e.distance].filter(Boolean).join(" · ")||s.name)),
+      el("span",{class:"who"}, n? `${n} jön` : "")));
+  });
+  view.append(box);
+}
+function renderAll(){
+  renderMe(); renderFilters(); renderUpcoming(); renderTitle();
+  state.view==="month" ? renderMonth() : renderList();
+}
+
+/* ---------- modal ---------- */
+const scrim=document.getElementById("scrim");
+function openModal(title, content){
+  document.getElementById("mTitle").textContent=title;
+  const c=document.getElementById("mContent"); c.textContent=""; c.append(content);
+  scrim.classList.add("open");
+  const f=c.querySelector("input,select,textarea"); if(f) setTimeout(()=>f.focus(),30);
+}
+function closeModal(){ scrim.classList.remove("open"); }
+document.getElementById("mClose").onclick=closeModal;
+scrim.addEventListener("click",e=>{ if(e.target===scrim) closeModal(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+
+function askName(then){
+  const inp=el("input",{maxlength:"40",placeholder:"pl. Gombi",value:state.me||""});
+  const err=el("div",{class:"err"});
+  const form=el("form",{},
+    el("div",{class:"body"}, el("p",{style:"margin:0;color:var(--muted)"},"A neved látszik majd a szervezőnél és a jelentkezőknél. Ezen az eszközön megjegyzem."),
+      el("label",{class:"f"},"Neved",inp),
+      keySection(), err),
+    el("footer",{}, el("button",{class:"btn",type:"button",onclick:closeModal},"Mégse"), el("button",{class:"btn dark",type:"submit"},"Mentés")));
+  form.addEventListener("submit",ev=>{
+    ev.preventDefault();
+    const v=inp.value.replace(/;/g,",").trim();
+    if(!v){ err.textContent="Írd be a neved."; return; }
+    state.me=v; store("vesc-name",v); renderMe();
+    if(then) then(); else closeModal();
+  });
+  openModal("Hogy hívnak?", form);
+}
+function keySection(){
+  const out=el("div",{class:"keybox"});
+  const show=el("code",{},state.key);
+  const paste=el("input",{placeholder:"Másik eszközöd kulcsa",maxlength:"64"});
+  const msgEl=el("div",{class:"muted",style:"font-size:12px"});
+  const copy=el("button",{class:"btn small",type:"button",onclick:async()=>{ try{ await navigator.clipboard.writeText(state.key); msgEl.textContent="Kimásolva."; }catch(e){ msgEl.textContent="Jelöld ki és másold ki kézzel."; } }},"Másolás");
+  const use=el("button",{class:"btn small",type:"button",onclick:()=>{ const v=paste.value.trim().toLowerCase(); if(!/^[a-f0-9]{32,64}$/.test(v)){ msgEl.textContent="Ez nem érvényes kulcs."; return; } state.key=v; store("vesc-key",v); show.textContent=v; paste.value=""; msgEl.textContent="Átvéve. Mostantól ezen az eszközön is kezelheted a saját edzéseidet."; refresh(); }},"Átveszem");
+  out.append(
+    el("p",{class:"section-title",style:"margin:4px 0 4px"},"Saját kulcs"),
+    el("p",{class:"muted",style:"margin:0 0 6px;font-size:12.5px"},"Erről ismeri fel a naptár, hogy mely edzéseket te hoztad létre (csak azokat tudod szerkeszteni és törölni). Ha más eszközről is kezelni szeretnéd őket, másold át oda ezt a kulcsot."),
+    el("div",{class:"keyrow"},show,copy),
+    el("div",{class:"keyrow"},paste,use), msgEl);
+  return out;
+}
+function adminLogin(){
+  const inp=el("input",{type:"password",maxlength:"100",autocomplete:"current-password"});
+  const err=el("div",{class:"err"});
+  const form=el("form",{},
+    el("div",{class:"body"}, el("p",{style:"margin:0;color:var(--muted)"},"Rendszergazdaként bármelyik edzést szerkesztheted, törölheted, és meghívót küldhetsz rá."),
+      el("label",{class:"f"},"Rendszergazda jelszó",inp), err),
+    el("footer",{}, el("button",{class:"btn",type:"button",onclick:closeModal},"Mégse"), el("button",{class:"btn dark",type:"submit"},"Belépés")));
+  form.addEventListener("submit",async ev=>{
+    ev.preventDefault();
+    try{
+      const ok=await call("checkAdmin", inp.value);
+      if(!ok){ err.textContent="Hibás jelszó."; return; }
+      state.adminPw=inp.value; store("vesc-admin",inp.value); closeModal(); refresh();
+    }catch(x){ err.textContent=msg(x); }
+  });
+  openModal("Rendszergazda belépés", form);
+}
+function adminLogout(){ state.adminPw=""; store("vesc-admin",""); state.isAdmin=false; refresh(); }
+
+function openInvite(e){
+  const s=SPORTS[sportOf(e)];
+  const list=el("div",{class:"members"},el("div",{class:"empty"},"Tagok betöltése…"));
+  const extra=el("textarea",{placeholder:"további e-mail címek, vesszővel elválasztva",style:"min-height:54px"});
+  const note=el("textarea",{maxlength:"500",placeholder:"Személyes üzenet (nem kötelező)",style:"min-height:54px"});
+  const err=el("div",{class:"err"});
+  const send=el("button",{class:"btn dark",type:"submit"},"Meghívó küldése ✉️");
+  const form=el("form",{},
+    el("div",{class:"body"},
+      el("p",{style:"margin:0;color:var(--muted)"},`${s.emoji} ${e.title||s.name} · ${fmtDayShort(e.date)}${e.start?" · "+e.start:""}`),
+      el("div",{},el("p",{class:"section-title"},"Tagok"),list),
+      el("label",{class:"f"},"Egyéb címzettek",extra),
+      el("label",{class:"f"},"Üzenet",note), err),
+    el("footer",{}, el("button",{class:"btn",type:"button",onclick:()=>openDetail(e.id)},"Vissza"), send));
+  call("listMembers").then(ms=>{
+    list.textContent="";
+    if(!ms.length){ list.append(el("div",{class:"empty"},"Még nincs tag a „Tagok” lapon. Írj be e-mail címet lent.")); return; }
+    list.append(el("label",{class:"mem all"},el("input",{type:"checkbox",onchange:ev=>list.querySelectorAll("input[data-id]").forEach(c=>c.checked=ev.target.checked)}),el("strong",{},"Mindenki")));
+    ms.forEach(m=>list.append(el("label",{class:"mem"},el("input",{type:"checkbox","data-id":m.id}),m.name)));
+  }).catch(()=>{ list.textContent=""; list.append(el("div",{class:"empty"},"A taglistát nem sikerült betölteni.")); });
+  form.addEventListener("submit",async ev=>{
+    ev.preventDefault();
+    const ids=[...list.querySelectorAll("input[data-id]:checked")].map(c=>Number(c.dataset.id));
+    if(!ids.length && !extra.value.trim()){ err.textContent="Válassz legalább egy címzettet."; return; }
+    send.disabled=true; send.textContent="Küldés…";
+    try{
+      const n=await call("sendInvite", e.id, ids, extra.value, note.value, state.me, auth());
+      openModal("Meghívó elküldve", el("div",{},el("div",{class:"body"},el("p",{},`✅ A meghívót ${n} címzettnek elküldtük a VESC Triatlon nevében.`)),el("footer",{},el("button",{class:"btn dark",onclick:()=>openDetail(e.id)},"Rendben"))));
+    }catch(x){ err.textContent=msg(x); send.disabled=false; send.textContent="Meghívó küldése ✉️"; }
+  });
+  openModal("Meghívó küldése", form);
+}
+const needName = fn => state.me ? fn() : askName(fn);
+
+function openDay(key){
+  const evs=visible().filter(e=>e.date===key).sort(sortEv);
+  const wrap=el("div",{class:"list",style:"border:0"});
+  evs.forEach(e=>{ const s=SPORTS[sportOf(e)];
+    wrap.append(el("button",{class:"list-ev",style:`--bg-c:${s.bg}`,onclick:()=>openDetail(e.id)},
+      el("span",{class:"dot"},s.emoji),
+      el("div",{class:"info"},el("div",{class:"t"},e.title||s.name),el("div",{class:"m"},[e.start,e.place].filter(Boolean).join(" · ")))));
+  });
+  openModal(fmtDayLong(key), el("div",{},wrap, el("footer",{},
+    el("button",{class:"btn",onclick:()=>newRace(key)},"🏆 Új verseny"),
+    el("button",{class:"btn dark",onclick:()=>openForm(null,key)},"+ Új közös edzés"))));
+}
+
+/** Napra kattintáskor: mit szeretnél rögzíteni? */
+function openChooser(key){
+  const box=el("div",{},
+    el("div",{class:"body"},
+      el("p",{style:"margin:0 0 4px;color:var(--muted)"},"Mit szeretnél rögzíteni erre a napra?"),
+      el("div",{class:"chooser"},
+        el("button",{class:"choice train",type:"button",onclick:()=>openForm(null,key)},
+          el("span",{class:"ce"},"🏃‍♂️🚴‍♂️🏊‍♂️"), el("span",{class:"ct"},"Közös edzés"), el("span",{class:"cs"},"futás, kerékpár, úszás, erőnlét")),
+        el("button",{class:"choice race",type:"button",onclick:()=>newRace(key)},
+          el("span",{class:"ce"},"🏆"), el("span",{class:"ct"},"Verseny"), el("span",{class:"cs"},"triatlon, duatlon, futó-, kerékpárverseny")))),
+    el("footer",{},el("button",{class:"btn",type:"button",onclick:closeModal},"Mégse")));
+  openModal(fmtDayLong(key), box);
+}
+function newRace(key){
+  if(!state.enabled.race){ state.enabled.race=true; saveFilters(); renderAll(); }
+  openForm(null,key||null,"race");
+}
+
+function openDetail(id){
+  const e=state.events.find(x=>x.id===id); if(!e) return;
+  const s=SPORTS[sportOf(e)];
+  const going=e.attendees||[];
+  const err=el("div",{class:"err"});
+  const box=el("div",{},
+    el("div",{class:"detail",style:`--bg-c:${s.bg}`},
+      el("span",{class:"tag"},s.emoji+" "+(e.sport==="race"?raceLabel(e):s.name)),
+      el("div",{class:"line"},el("span",{class:"k"},"📅"),el("span",{},fmtDayLong(e.date))),
+      e.start && el("div",{class:"line"},el("span",{class:"k"},"🕒"),el("span",{},e.start+(e.end?" – "+e.end:""))),
+      e.place && el("div",{class:"line"},el("span",{class:"k"},"📍"),el("span",{},e.place)),
+      e.distance && el("div",{class:"line"},el("span",{class:"k"},"📏"),el("span",{},e.distance)),
+      e.link && el("div",{class:"line"},el("span",{class:"k"},"🔗"),el("a",{href:e.link,target:"_blank",rel:"noopener"},e.sport==="race"?"Verseny oldala / nevezés":e.link)),
+      e.seriesId && el("div",{class:"line"},el("span",{class:"k"},"🔁"),el("span",{},"Hetente ismétlődő edzés")),
+      e.desc && el("div",{class:"desc"},e.desc),
+      el("div",{class:"line"},el("span",{class:"k"},"👤"),el("span",{},"Szervező: "+(e.organizer||"–"))),
+      el("div",{},
+        el("p",{class:"section-title",style:"margin:6px 0 6px"},`Jönnek (${going.length})`),
+        going.length ? el("div",{class:"att"},going.map(g=>el("span",{},g))) : el("div",{class:"empty"},"Még senki nem jelentkezett.")),
+      err));
+  const del=el("button",{class:"btn danger"},"Törlés");
+  if(!e.canManage) del.style.display="none";
+  let armed=false;
+  const doDelete=async(scope)=>{
+    box.querySelectorAll("footer button").forEach(b=>b.disabled=true);
+    try{ apply(await call("deleteEvent", e.id, auth(), scope)); closeModal(); renderAll(); }
+    catch(x){ err.textContent=msg(x); box.querySelectorAll("footer button").forEach(b=>b.disabled=false); }
+  };
+  del.onclick=()=>{
+    if(e.seriesId){
+      const foot=box.querySelector("footer"); foot.textContent="";
+      foot.append(el("span",{style:"align-self:center;font-weight:600;margin-right:auto"},"Mit törölsz?"),
+        el("button",{class:"btn",onclick:()=>openDetail(e.id)},"Mégse"),
+        el("button",{class:"btn danger",onclick:()=>doDelete("one")},"Csak ezt"),
+        el("button",{class:"btn danger confirm",onclick:()=>doDelete("future")},"Ezt és a következőket"));
+      return;
+    }
+    if(!armed){ armed=true; del.textContent="Biztosan törlöd?"; del.classList.add("confirm"); return; }
+    doDelete("one");
+  };
+  const mine=iGo(e);
+  const join=el("button",{class:"btn dark"}, mine?"Mégsem jövök":"Jövök! 🙋");
+  join.onclick=()=>needName(async()=>{
+    join.disabled=true;
+    try{ apply(await call("setAttendance", e.id, state.me, !iGo(e), auth())); renderAll(); openDetail(e.id); }
+    catch(x){ openDetail(e.id); }
+  });
+  box.append(el("footer",{}, del, el("span",{class:"spacer"}),
+    e.canManage && el("button",{class:"btn",onclick:()=>openInvite(e)},"Meghívó ✉️"),
+    e.canManage && el("button",{class:"btn",onclick:()=>openForm(e)},"Szerkesztés"), join));
+  if(!e.canManage) box.querySelector(".detail").append(el("div",{class:"muted",style:"font-size:12px"},"Szerkeszteni, törölni és meghívót küldeni csak a létrehozó vagy a rendszergazda tud."));
+  openModal(e.title||s.name, box);
+}
+
+function openForm(existing, dateKey, presetSport){
+  if(!existing && !state.me) return askName(()=>openForm(null,dateKey,presetSport));
+  const e=existing||{sport:presetSport||firstEnabled(),date:dateKey||todayStr(),start:"",end:"",title:"",place:"",distance:"",desc:"",link:"",raceType:""};
+  const isRace=sportOf(e)==="race";
+  const form=el("form",{});
+  const f=(label,input)=>el("label",{class:"f"},label,input);
+  const iTitle=el("input",{maxlength:"80",value:e.title||"",placeholder:isRace?"Válassz a listából vagy írd be a verseny nevét":"pl. Hosszú futás a Csatár-hegyen"});
+  const iDate=el("input",{type:"date",required:true,value:e.date});
+  const iStart=el("input",{type:"time",value:e.start||""});
+  const iEnd=el("input",{type:"time",value:e.end||""});
+  const iPlace=el("input",{maxlength:"100",placeholder:isRace?"pl. Keszthely":"pl. Kittenberger, Sportuszoda",value:e.place||""});
+  const iDist=el("input",{maxlength:"60",placeholder:isRace?"pl. 1,9 / 90 / 21,1 km":"pl. 15 km, laza tempó",value:e.distance||""});
+  const iDesc=el("textarea",{maxlength:"1000",placeholder:isRace?"Ki indul, közös utazás, szállás…":"Tempó, gyülekező, mit hozz magaddal…"}); iDesc.value=e.desc||"";
+  const iLink=el("input",{type:"url",maxlength:"300",placeholder:"https://… (nevezés, versenykiírás)",value:e.link||""});
+  const linkPreview=el("a",{target:"_blank",rel:"noopener",class:"linkprev"});
+  function updateLinkPreview(){
+    const v=iLink.value.trim();
+    if(/^https?:\/\/\S+$/i.test(v)){ linkPreview.href=v; linkPreview.textContent="🔗 Megnyitás: "+v; linkPreview.style.display=""; }
+    else linkPreview.style.display="none";
+  }
+  iLink.addEventListener("input",updateLinkPreview);
+
+  // típusválasztó: edzésnél a 4 sportág, versenynél a versenytípusok
+  const pick=el("div",{class:"sportpick"+(isRace?" five":" four")});
+  if(isRace){
+    const cur=RACE_TYPES[e.raceType]?e.raceType:"tri";
+    for(const [k,t] of Object.entries(RACE_TYPES)){
+      const inp=el("input",{type:"radio",name:"raceType",id:"rt-"+k,value:k});
+      if(cur===k) inp.checked=true;
+      pick.append(el("div",{style:`--c:var(--race);--bg-c:var(--race-bg)`},inp,el("label",{for:"rt-"+k},el("span",{class:"e"},t.emoji),t.short)));
+    }
+  } else {
+    for(const [k,s] of Object.entries(SPORTS)){
+      if(k==="race") continue;
+      const inp=el("input",{type:"radio",name:"sport",id:"sp-"+k,value:k});
+      if(sportOf(e)===k) inp.checked=true;
+      pick.append(el("div",{style:`--c:${s.c};--bg-c:${s.bg}`},inp,el("label",{for:"sp-"+k},el("span",{class:"e"},s.emoji),s.short||s.name.split(" ")[0])));
+    }
+  }
+
+  // versenynév-lista (a táblázat „Versenyek” lapjáról), szabad beírással
+  let races=[];
+  if(isRace){
+    const dl=el("datalist",{id:"raceNames"});
+    iTitle.setAttribute("list","raceNames");
+    iTitle.setAttribute("autocomplete","off");
+    form.append(dl);
+    call("listRaces").then(list=>{
+      races=list||[];
+      races.forEach(r=>dl.append(el("option",{value:r.name,label:[r.date&&fmtDayShort(r.date),r.place].filter(Boolean).join(" · ")})));
+    }).catch(()=>{});
+    let lastPicked="";
+    const pickRace=()=>{
+      const v=iTitle.value.trim().toLowerCase();
+      const r=races.find(x=>x.name.toLowerCase()===v);
+      if(!r || r.name===lastPicked) return;
+      lastPicked=r.name;
+      if(r.type){ const rb=form.querySelector("#rt-"+r.type); if(rb) rb.checked=true; }
+      if(r.date) iDate.value=r.date;
+      if(r.distance) iDist.value=r.distance;
+      if(r.place) iPlace.value=r.place;
+      if(r.link) iLink.value=r.link;
+      if(r.note && !iDesc.value.trim()) iDesc.value=r.note;
+      updateLinkPreview();
+    };
+    iTitle.addEventListener("input",pickRace);
+    iTitle.addEventListener("change",pickRace);
+  }
+
+  // heti ismétlés (csak új edzésnél)
+  const defUntil=(()=>{ const d=parseYmd(e.date); d.setDate(d.getDate()+7*11); return ymd(d); })();
+  const iRep=el("input",{type:"checkbox"});
+  const iUntil=el("input",{type:"date",value:defUntil});
+  const untilWrap=el("label",{class:"f",style:"display:none"},"Utolsó alkalom legkésőbb",iUntil);
+  iRep.addEventListener("change",()=>{ untilWrap.style.display=iRep.checked?"":"none"; });
+  const repField=(!existing && !isRace) ? el("div",{class:"repeat"},el("label",{class:"chk"},iRep,"🔁 Hetente ismétlődik"),untilWrap) : null;
+  let scope="one";
+  const scopeField = existing && existing.seriesId ? el("div",{class:"repeat"},
+    el("p",{class:"section-title",style:"margin:0 0 4px"},"Ismétlődő edzés"),
+    el("label",{class:"chk"},el("input",{type:"radio",name:"scope",value:"one",checked:true,onchange:()=>scope="one"}),"Csak ezt az alkalmat módosítom"),
+    el("label",{class:"chk"},el("input",{type:"radio",name:"scope",value:"future",onchange:()=>scope="future"}),"Ezt és az összes következőt")) : null;
+
+  const err=el("div",{class:"err"});
+  const save=el("button",{class:"btn dark",type:"submit"},existing?"Mentés":"Hozzáadás");
+  form.append(
+    el("div",{class:"body"},
+      el("div",{},el("p",{class:"section-title"},isRace?"Verseny típusa":"Sportág"),pick),
+      f(isRace?"Verseny neve":"Megnevezés",iTitle),
+      el("div",{class:"row3"},f("Dátum",iDate),f(isRace?"Rajt":"Kezdés",iStart),f("Vége",iEnd)),
+      el("div",{class:"row"},f("Helyszín",iPlace),f(isRace?"Táv":"Táv / jelleg",iDist)),
+      (isRace||e.link) && el("div",{},f("Link",iLink),linkPreview), f(isRace?"Megjegyzés":"Leírás",iDesc), repField, scopeField, err),
+    el("footer",{},el("button",{class:"btn",type:"button",onclick:()=>existing?openDetail(existing.id):closeModal()},"Mégse"),save));
+  form.addEventListener("submit",async(ev)=>{
+    ev.preventDefault();
+    const sport=isRace?"race":(form.querySelector('input[name=sport]:checked')?.value||"other");
+    const raceType=isRace?(form.querySelector('input[name=raceType]:checked')?.value||"other"):"";
+    if(isRace && !iTitle.value.trim()){ err.textContent="Add meg a verseny nevét."; return; }
+    if(!iDate.value){ err.textContent="Add meg a dátumot."; return; }
+    if(iStart.value && iEnd.value && iEnd.value<iStart.value){ err.textContent="A vége nem lehet a kezdés előtt."; return; }
+    const repeating = !!repField && iRep.checked;
+    if(repeating && (!iUntil.value || iUntil.value<=iDate.value)){ err.textContent="Az utolsó alkalom legyen későbbi, mint az első."; return; }
+    const data={id:existing?existing.id:"",sport,raceType,title:iTitle.value.trim(),date:iDate.value,start:iStart.value,end:iEnd.value,
+      place:iPlace.value.trim(),distance:iDist.value.trim(),desc:iDesc.value.trim(),link:iLink.value.trim(),organizer:state.me};
+    save.disabled=true; save.textContent="Mentés…";
+    try{
+      apply(await call("saveEvent", data, auth(), {repeatUntil: repeating?iUntil.value:"", scope}));
+      const d=parseYmd(data.date); state.cursor=new Date(d.getFullYear(),d.getMonth(),1);
+      closeModal(); renderAll();
+    }catch(x){ err.textContent=msg(x); save.disabled=false; save.textContent=existing?"Mentés":"Hozzáadás"; }
+  });
+  updateLinkPreview();
+  openModal(existing?(isRace?"Verseny szerkesztése":"Edzés szerkesztése"):(isRace?"🏆 Új verseny":"Új közös edzés"), form);
+}
+function firstEnabled(){ return Object.keys(SPORTS).find(k=>k!=="race"&&state.enabled[k])||"run"; }
+function msg(x){ const m=(x&&x.message)||""; return m && m.length<120 ? "Hiba: "+m.replace(/^Error:\s*/,"") : "Nem sikerült menteni, próbáld újra."; }
+function setStatus(t,warn){ const s=document.getElementById("status"); s.textContent=t; s.classList.toggle("warn",!!warn); }
+
+/* ---------- controls ---------- */
+document.getElementById("prev").onclick=()=>{ state.cursor=new Date(state.cursor.getFullYear(),state.cursor.getMonth()-1,1); renderAll(); };
+document.getElementById("next").onclick=()=>{ state.cursor=new Date(state.cursor.getFullYear(),state.cursor.getMonth()+1,1); renderAll(); };
+document.getElementById("todayBtn").onclick=()=>{ const d=new Date(); state.cursor=new Date(d.getFullYear(),d.getMonth(),1); renderAll(); };
+document.getElementById("vMonth").onclick=()=>{ state.view="month"; renderAll(); };
+document.getElementById("vList").onclick=()=>{ state.view="list"; renderAll(); };
+document.getElementById("allOn").onclick=()=>{ for(const k in SPORTS) state.enabled[k]=true; saveFilters(); renderAll(); };
+document.getElementById("allOff").onclick=()=>{ for(const k in SPORTS) state.enabled[k]=false; saveFilters(); renderAll(); };
+document.getElementById("addBtn").onclick=()=>openForm(null);
+document.getElementById("addRaceBtn").onclick=()=>newRace(null);
+let rT; addEventListener("resize",()=>{ clearTimeout(rT); rT=setTimeout(()=>{ if(state.view==="month") renderMonth(); },150); });
+
+renderAll();
+refresh();
+setInterval(()=>{ if(!document.hidden && !scrim.classList.contains("open")) refresh(); }, 60000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(); });
+</script>
+</body>
+</html>
